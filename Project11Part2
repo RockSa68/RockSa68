@@ -1,0 +1,581 @@
+Wrapper and Clock Divider
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 11/02/2018 07:12:52 PM
+// Design Name: 
+// Module Name: counter
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+module wrapper(
+input clk, [3:0] btn,
+output [6:0] c, [3:0] a
+    );
+    integer intop1ones; 
+    integer intop2tens;
+    integer intop3hundreds; 
+    integer intop4thousands; 
+    integer intop5;   
+    wire [1:0] ydata;
+    wire [1:0] edata;
+    wire [3:0] fdata;
+    wire [15:0] Qdata;
+    wire [3:0] Q1data;
+    wire [3:0] Q2data; 
+    wire [3:0] Q3data; 
+    wire [3:0] Q4data;
+    wire clk1khz;
+    wire cen;
+    wire en2data;
+    wire en3data;
+    wire en4data;
+    wire outdata1;
+    wire outdata2;
+    wire outdata3;
+    
+ counter t(
+    .clk(clk),
+    .Y(ydata)
+    );
+    
+ counter2 s(
+     .clk(clk),
+     .Z(edata)
+     );
+     
+ decoder2to4 g(
+    .Y(ydata),
+    .a(a)
+    );
+    
+nextstate m(
+        .clk(edata),
+        .rst(btn[3]),
+        .start(btn[0]),
+        .stop(btn[1]),
+        .inc(btn[2]),
+        .cen(cen)   
+    );    
+    
+clock16 n(
+  .Z(edata),
+  .Q1(Qdata),
+  .cen(cen),
+  .rst(btn[3])
+  );
+
+always@(Qdata)begin
+intop5=Qdata;
+    intop1ones=intop5%10;
+    intop2tens=((intop5%100)-(intop5%10))/10;
+    intop3hundreds=((intop5%1000)-(intop5%100))/100;
+    intop4thousands=((intop5)-(intop5%1000))/1000;
+    end
+    
+assign Q1data=intop1ones;
+assign Q2data=intop2tens;
+assign Q3data=intop3hundreds;
+assign Q4data=intop4thousands;
+    
+Mux y(
+    .Q1(Q1data),
+    .Q2(Q2data),
+    .Q3(Q3data),
+    .Q4(Q4data),
+    .Y(ydata),
+    .F(fdata)
+    );
+    
+cathodes z(
+    
+    .F(fdata),
+    .c(c)
+);
+
+endmodule
+
+
+module counter(
+input clk,
+output [1:0] Y
+    );
+    
+    reg [20:0] Q;
+
+always @ (posedge(clk))          // When will Always Block Be Triggered
+begin
+
+        // How Output reacts when Rising Edge of Clock Arrives?
+        Q <= Q + 1'b1;
+end
+
+assign Y[0] = Q[19];
+assign Y[1] = Q[20];
+
+endmodule
+
+module counter2(
+input clk,
+output [1:0] Z
+    );
+    reg [16:0] Q;
+
+always @ (posedge(clk))            // When will Always Block Be Triggered
+begin
+        // How Output reacts when Rising Edge of Clock Arrives?
+        Q <= Q + 1'b1;
+end
+
+assign Z[0] = Q[16];
+assign Z[1] = Q[17];
+
+endmodule
+
+module clock16(
+input [1:0] Z,
+input rst,
+input cen,
+output reg [15:0] Q1
+    );
+    
+ always @ (posedge(Z), posedge(rst))
+begin
+if (rst == 1'd1)
+Q1 <= 16'd0;
+else if (Q1 >= 16'd9999)
+begin
+Q1 <= 16'd0;
+end
+
+else if (cen == 1'b1)
+begin
+Q1 <= Q1 + 4'b0001;
+end
+end
+endmodule
+
+
+//module clock2(
+//input en2, 
+//input cen,
+//output reg [3:0] Q2,
+//output reg tc2,
+//output outdata,
+//input rst
+//    );
+   
+    
+//always @ (posedge(en2), posedge(rst))
+//begin
+//if (rst == 1'b1)
+//Q2 <= 4'b0000;
+//else if (Q2 >= 4'b1001)
+//begin
+//Q2 <= 4'b0000;
+//tc2 = 1;
+//end
+
+//else
+//begin
+//Q2 <= Q2 + 4'b0001;
+//tc2 = 0;
+//end
+//end
+// assign outdata = tc2 & cen;
+//endmodule
+
+
+//module clock3(
+//input en3, 
+//input cen,
+//output reg [3:0] Q3,
+//output reg tc3,
+//output outdata,
+//input rst
+//    );
+    
+//always @ (posedge en3, posedge(rst))
+//    begin
+//    if (rst == 1'b1)
+//    Q3 <= 4'b0000;
+//    else if (Q3 >= 4'b1000)
+//        begin
+//        Q3 <= 4'b0000;
+//        tc3 = 1;
+//        end
+//    else
+//        begin
+//        Q3 <= Q3 + 4'b0001;
+//        tc3 = 0;
+//        end
+//    end
+
+//assign outdata = tc3 & cen;
+
+//endmodule
+
+//module clock4(
+//input en4, 
+//output reg [3:0] Q4,
+//input rst
+//    );
+      
+// always @ (posedge(en4), posedge(rst))
+//   begin
+//   if(rst == 1'b1)
+//   Q4 <= 4'b0000;
+   
+//   else if (Q4 >= 4'b1001)
+//   Q4 <= 4'b0000;
+   
+//   else
+//   Q4 <= Q4 + 4'b0001;
+//   end
+
+
+//endmodule
+
+module Mux(
+input [3:0] Q1,
+input [3:0] Q2,
+input [3:0] Q3,
+input [3:0] Q4,
+input [1:0] Y,
+output reg [3:0] F
+    );
+    
+always @ (Y)
+begin
+if (Y == 2'b00)
+F = Q1;
+
+else if (Y == 2'b01)
+F = Q2;
+
+else if (Y == 2'b10)
+F = Q3;
+
+else if (Y == 2'b11)
+F = Q4;
+
+end
+
+endmodule
+
+
+module cathodes(
+
+input [3:0] F,
+output reg [6:0] c
+);
+
+always @ (F)
+begin
+    if (F == 4'b0000)
+        c = 7'b1000000;
+    else if(F == 4'b0001)
+        c = 7'b1111001;
+    else if(F == 4'b0010)
+        c = 7'b0100100;
+    else if(F == 4'b0011)
+        c = 7'b0110000;
+    else if(F == 4'b0100)
+        c = 7'b0011001;
+    else if(F == 4'b0101)
+        c = 7'b0010010;
+    else if(F == 4'b0110)
+        c = 7'b0000010;
+    else if(F == 4'b0111)
+        c = 7'b1111000;
+    else if(F == 4'b1000)
+        c = 7'b0000000;
+    else if (F == 4'b1001)
+        c = 7'b0010000;
+        
+end
+endmodule
+
+module decoder2to4(
+
+input [1:0] Y,
+output reg [3:0] a
+);
+
+always @(Y)
+begin
+if (Y == 2'b00) 
+a = 4'b1110;
+
+if (Y == 2'b01)
+a = 4'b1101;
+
+if (Y == 2'b10)
+a = 4'b1011;
+
+if (Y == 2'b11)
+a = 4'b0111;
+end
+endmodule
+
+module nextstate(
+    input [1:0] clk,
+    input wire rst,
+    input wire start,
+    input wire stop,
+    input wire inc,
+    output cen   
+);
+
+localparam S0 = 2'b00;
+localparam S1 = 2'b01;
+localparam S2 = 2'b10;
+localparam S3 = 2'b11;
+
+reg [1:0] pState, nState;
+reg ceno;
+
+always @ (rst, start, stop, inc, pState)
+begin
+
+    nState = pState;
+    
+    case (pState)
+    
+        S0: 
+            begin
+                ceno = 1'b0;
+                if (start == 1'b1) 
+                    begin
+                        nState = S1;
+                    end
+                if (inc == 1'b1)
+                    begin
+                        nState = S2;  
+                    end
+            end
+        
+        S1: 
+            begin
+                ceno = 1'b1;   
+                if (stop == 1'b1)
+                    nState = S0; 
+            end
+            
+        S2:
+            begin
+                ceno = 1'b1;
+                if (inc == 1'b1)
+                    nState = S3;
+                end
+            
+        S3:
+            begin
+                ceno = 1'b0;
+                if (inc == 1'b0)
+                   nState = S0;       
+            end
+    endcase
+    
+    
+end
+
+// State Registers
+always @ (posedge(clk), posedge(rst))
+begin
+    if (rst == 1'b1)
+        pState <= S0;
+    else
+        pState <= nState;
+end
+
+// Output Logic
+assign cen = ceno;
+
+endmodule
+
+module ClkDivider1KHz (
+    input [1:0] clk,
+    input rst,
+    output reg Y
+    );
+localparam constantNumber = 100000000/2000;
+reg [31:0] count;
+
+always @ (posedge(clk), posedge(rst))
+begin
+    if (rst == 1'b1)
+        count <= 32'b0;
+    else if (count == constantNumber - 1)
+        count <= 32'b0;
+    else
+        count <= count + 1;
+end
+
+always @ (posedge(clk), posedge(rst))
+begin
+    if (rst == 1'b1)
+        Y <= 1'b0;
+    else if (count == constantNumber - 1)
+        Y <= ~Y;
+    else
+        Y <= Y;
+end
+
+endmodule
+
+
+Constraints
+## Master .xdc for the Blackboard
+
+
+##Clock
+
+set_property -dict { PACKAGE_PIN H16   IOSTANDARD LVCMOS33 } [get_ports { clk }]; #IO_L13P_T2_MRCC_35 Schematic=SYSCLK
+##create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 4} [get_ports { clk }];
+#set_property CLOCK_DEDICATED_ROUTEFALSE[get_nets PIXCLK_IBUF];
+
+##LEDS
+#set_property -dict { PACKAGE_PIN N20   IOSTANDARD LVCMOS33 } [get_ports { led[0] }]; #IO_L14P_T2_SRCC_34 Schematic=LD0
+#set_property -dict { PACKAGE_PIN P20   IOSTANDARD LVCMOS33 } [get_ports { led[1] }]; #IO_L14N_T2_SRCC_34 Schematic=LD1
+#set_property -dict { PACKAGE_PIN R19   IOSTANDARD LVCMOS33 } [get_ports { led[2] }]; #IO_0_34 Schematic=LD2
+#set_property -dict { PACKAGE_PIN T20   IOSTANDARD LVCMOS33 } [get_ports { led[3] }]; #IO_L15P_T2_DQS_34 Schematic=LD3
+
+##RGB_LEDS
+#set_property -dict { PACKAGE_PIN U13   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_0[0] }]; #IO_L3P_T0_DWS_PUDC_B_34 Schematic=LD4_R
+#set_property -dict { PACKAGE_PIN T19   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_0[1] }]; #IO_25_34 Schematic=LD4_G
+#set_property -dict { PACKAGE_PIN W20   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_0[2] }]; #IO_L16N_T2_34 Schematic=LD4_B
+
+#set_property -dict { PACKAGE_PIN Y19   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_1[0] }]; #IO_L17N_T2_34  Schematic=LD5_R
+#set_property -dict { PACKAGE_PIN V20   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_1[1] }]; #IO_L16P_T2_34 Schematic=LD5_G
+#set_property -dict { PACKAGE_PIN W19   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_1[2] }]; #IO_L22N_T3_34 Schematic=LD5_B
+
+#set_property -dict { PACKAGE_PIN W18   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_2[0] }]; #IO_L22P_T3_34  Schematic=LD6_R
+#set_property -dict { PACKAGE_PIN W16   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_2[1] }]; #IO_L18N_T2_34 Schematic=LD6_G
+#set_property -dict { PACKAGE_PIN Y18   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_2[2] }]; #IO_L17P_T2_34 Schematic=LD6_B
+
+#set_property -dict { PACKAGE_PIN Y14   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_3[0] }]; #IO_L8N_T1_34 Schematic=LD7_R
+#set_property -dict { PACKAGE_PIN Y16   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_3[1] }]; #IO_L7P_T1_34 Schematic=LD7_G
+#set_property -dict { PACKAGE_PIN Y17   IOSTANDARD LVCMOS33 } [get_ports { RGB_led_3[2] }]; #IO_L7N_T1_34 Schematic=LD7_B
+
+##Switches
+#set_property -dict { PACKAGE_PIN R17   IOSTANDARD LVCMOS33 } [get_ports { sw[0] }]; #IO_L19N_T3_VREF_34 Schematic=SW0
+#set_property -dict { PACKAGE_PIN U20   IOSTANDARD LVCMOS33 } [get_ports { sw[1] }]; #IO_L15N_T2_DQS_34 Schematic=SW1
+#set_property -dict { PACKAGE_PIN R16   IOSTANDARD LVCMOS33 } [get_ports { sw[2] }]; #IO_L19P_T3_34 Schematic=SW2
+#set_property -dict { PACKAGE_PIN N16   IOSTANDARD LVCMOS33 } [get_ports { sw[3] }]; #IO_L21N_T3_DQS_AD14N_35 Schematic=SW3
+#set_property -dict { PACKAGE_PIN R14   IOSTANDARD LVCMOS33 } [get_ports { sw[4] }]; #IO_L6N_T0_VREF_34 Schematic=SW4
+#set_property -dict { PACKAGE_PIN P14   IOSTANDARD LVCMOS33 } [get_ports { sw[5] }]; #IO_L6P_T0_34 Schematic=SW5
+#set_property -dict { PACKAGE_PIN L15   IOSTANDARD LVCMOS33 } [get_ports { sw[6] }]; #IO_L22N_T3_AD7N_35 Schematic=SW6
+#set_property -dict { PACKAGE_PIN M15   IOSTANDARD LVCMOS33 } [get_ports { sw[7] }]; #IO_L23N_T3_35 Schematic=SW7
+
+##Buttons
+set_property -dict { PACKAGE_PIN W14   IOSTANDARD LVCMOS33 } [get_ports { btn[0] }]; #IO_L8P_T1_34 Schematic=BTN0
+set_property -dict { PACKAGE_PIN W13   IOSTANDARD LVCMOS33 } [get_ports { btn[1] }]; #IO_L4N_T0_34 Schematic=BTN1
+set_property -dict { PACKAGE_PIN P15   IOSTANDARD LVCMOS33 } [get_ports { btn[2] }]; #IO_L24P_T3_34 Schematic=BTN2
+set_property -dict { PACKAGE_PIN M14   IOSTANDARD LVCMOS33 } [get_ports { btn[3] }]; #IO_L23P_T3_35 Schematic=BTN3
+
+##SevenSegmentDisplay
+##anodes
+set_property -dict { PACKAGE_PIN K19   IOSTANDARD LVCMOS33 } [get_ports { a[0] }]; #IO_L10P_T1_AD11P_35 Schematic=SSEG_AN0
+set_property -dict { PACKAGE_PIN H17   IOSTANDARD LVCMOS33 } [get_ports { a[1] }]; #IO_L13N_T2_MRCC_35 Schematic=SSEG_AN1
+set_property -dict { PACKAGE_PIN M18   IOSTANDARD LVCMOS33 } [get_ports { a[2] }]; #IO_L8N_T1_AD10N_35 Schematic=SSEG_AN2
+set_property -dict { PACKAGE_PIN L16   IOSTANDARD LVCMOS33 } [get_ports { a[3] }]; #IO_L11P_T1_SRCC_35 Schematic=SSEG_AN3
+
+##cathodes
+set_property -dict { PACKAGE_PIN K14   IOSTANDARD LVCMOS33 } [get_ports { c[0] }]; #IO_L20P_T3_AD6P_35 Schematic=SSEG_CA
+set_property -dict { PACKAGE_PIN H15   IOSTANDARD LVCMOS33 } [get_ports { c[1] }]; #IO_L19P_T3_35 Schematic=SSEG_CB
+set_property -dict { PACKAGE_PIN J18   IOSTANDARD LVCMOS33 } [get_ports { c[2] }]; #IO_L14P_T2_AD4P_SRCC_35 Schematic=SSEG_CC
+set_property -dict { PACKAGE_PIN J15   IOSTANDARD LVCMOS33 } [get_ports { c[3] }]; #IO_25_35 Schematic=SSEG_CD
+set_property -dict { PACKAGE_PIN M17   IOSTANDARD LVCMOS33 } [get_ports { c[4] }]; #IO_L8P_T1_AD10P_35 Schematic=SSEG_CE
+set_property -dict { PACKAGE_PIN J16   IOSTANDARD LVCMOS33 } [get_ports { c[5] }]; #IO_L24N_T3_AD15N_35 Schematic=SSEG_CF
+set_property -dict { PACKAGE_PIN H18   IOSTANDARD LVCMOS33 } [get_ports { c[6] }]; #IO_L8P_T1_AD10P_35 Schematic=SSEG_CG
+#set_property -dict { PACKAGE_PIN K18   IOSTANDARD LVCMOS33 } [get_ports { cathode[7] }]; #IO_L12N_T1_MRCC_35 Schematic=SSEG_DP
+
+##Accelerometer/Gyroscope/Magnetometer
+#set_property -dict { PACKAGE_PIN H20   IOSTANDARD LVCMOS33 } [get_ports { GYRO_SCL }]; #IO_L17N_T2_AD5N_35 Schematic=GYRO_SCL
+#set_property -dict { PACKAGE_PIN J19   IOSTANDARD LVCMOS33 } [get_ports { GYRO_SDA }]; #IO_L10N_T1_AD11N_35 Schematic=GYRO_SDA
+#set_property -dict { PACKAGE_PIN J20   IOSTANDARD LVCMOS33 } [get_ports { GYRO_SDO_A/G }]; #IO_L17P_T2_AD5P_35 Schematic=GYRO_SDO_A/G
+#set_property -dict { PACKAGE_PIN L17   IOSTANDARD LVCMOS33 } [get_ports { GYRO_SDO_M }]; #IO_L11N_T1_SRCC_35 Schematic=GYRO_SDO_M
+#set_property -dict { PACKAGE_PIN K17   IOSTANDARD LVCMOS33 } [get_ports { GYRO_CS_A/G }]; #IO_L12P_T1_MRCC_35 Schematic=GYRO_CS_A/G
+#set_property -dict { PACKAGE_PIN K16   IOSTANDARD LVCMOS33 } [get_ports { GYRO_CS_M }]; #IO_L24P_T3_AD15P_35 Schematic=GYRO_CS_M
+#set_property -dict { PACKAGE_PIN J14   IOSTANDARD LVCMOS33 } [get_ports { DEN_A_G }]; #IO_L20N_T3_AD6N_35 Schematic=GYRO_DEN_A/G
+#set_property -dict { PACKAGE_PIN L20   IOSTANDARD LVCMOS33 } [get_ports { DRDY_M }]; #IO_L9N_T1_DQS_AD3N_35 Schematic=GYRO_DRDY_M
+#set_property -dict { PACKAGE_PIN M20   IOSTANDARD LVCMOS33 } [get_ports { INT_A_G }]; #IO_L7N_T1_AD2N_35 Schematic=GYRO_INT_A/G
+#set_property -dict { PACKAGE_PIN L19   IOSTANDARD LVCMOS33 } [get_ports { INT_M }]; #IO_L9P_T1_DQS_AD3P_35 Schematic=GYRO_INT_M
+
+##MIC
+#set_property -dict { PACKAGE_PIN N15   IOSTANDARD LVCMOS33 } [get_ports { M_clk }]; #IO_L21P_T3_DQS_AD14P_35 Schematic=M_CLK
+#set_property -dict { PACKAGE_PIN L14   IOSTANDARD LVCMOS33 } [get_ports { M_data }]; #IO_L22P_T3_AD7P_35 Schematic=M_DATA
+
+##Speaker
+#set_property -dict { PACKAGE_PIN G18  IOSTANDARD LVCMOS33 } [get_ports { audio }]; #IO_L16N_T2_35 Schematic=AUDIO
+
+##VGA
+#set_property -dict { PACKAGE_PIN V15   IOSTANDARD LVCMOS33 } [get_ports { vga_r[0] }]; #IO_L10P_T1_34 Sch=VGA_R4_CON
+#set_property -dict { PACKAGE_PIN W15   IOSTANDARD LVCMOS33 } [get_ports { vga_r[1] }]; #IO_L10N_T1_34 Sch=VGA_R5_CON
+#set_property -dict { PACKAGE_PIN V16   IOSTANDARD LVCMOS33 } [get_ports { vga_r[2] }]; #IO_L18P_T2_34 Sch=VGA_R6_CON
+#set_property -dict { PACKAGE_PIN T16   IOSTANDARD LVCMOS33 } [get_ports { vga_r[3] }]; #IO_L18N_T2_AD13N_35 Sch=VGA_R7_CON
+#set_property -dict { PACKAGE_PIN T15   IOSTANDARD LVCMOS33 } [get_ports { vga_g[0] }]; #IO_L5N_T0_34 Sch=VGA_G4_CON
+#set_property -dict { PACKAGE_PIN V13   IOSTANDARD LVCMOS33 } [get_ports { vga_g[1] }]; #IO_L3N_T0_DQS_34 Sch=VGA_G5_CON
+#set_property -dict { PACKAGE_PIN U14   IOSTANDARD LVCMOS33 } [get_ports { vga_g[2] }]; #IO_L11P_T1_SRCC_34 Sch=VGA_G6_CON
+#set_property -dict { PACKAGE_PIN U15   IOSTANDARD LVCMOS33 } [get_ports { vga_g[3] }]; #IO_L11N_T1_SRCC_34 Sch=VGA_G7_CON
+#set_property -dict { PACKAGE_PIN T11   IOSTANDARD LVCMOS33 } [get_ports { vga_b[0] }]; #IO_L1P_T0_34 Sch=VGA_B4_CON
+#set_property -dict { PACKAGE_PIN T14   IOSTANDARD LVCMOS33 } [get_ports { vga_b[1] }]; #IO_L5P_T0_34 Sch=VGA_B5_CON
+#set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS33 } [get_ports { vga_b[2] }]; #IO_L2N_T0_34 Sch=VGA_B6_CON
+#set_property -dict { PACKAGE_PIN V12   IOSTANDARD LVCMOS33 } [get_ports { vga_b[3] }]; #IO_L4P_T0_34 Sch=VGA_B7_CON
+#set_property -dict { PACKAGE_PIN T12   IOSTANDARD LVCMOS33 } [get_ports {HS}]; #IO_L2P_T0_34 Sch=VGA_HS
+#set_property -dict { PACKAGE_PIN T10   IOSTANDARD LVCMOS33 } [get_ports {VS}]; #IO_L1N_T0_34 Sch=VGA_VS
+
+##HDMI Signals
+#set_property -dict { PACKAGE_PIN U19   IOSTANDARD LVCMOS33 } [get_ports hdmi_clk_n]; #IO_L12N_T1_MRCC_34 Sch=HDMI_TX_CLK_N
+#set_property -dict { PACKAGE_PIN U18   IOSTANDARD LVCMOS33 } [get_ports hdmi_clk_p]; #IO_L12P_T1_MRCC_34 Sch=HDMI_TX_CLK_P
+#set_property -dict { PACKAGE_PIN V18   IOSTANDARD LVCMOS33 } [get_ports hdmi_tx_n[0]]; #IO_L21N_T3_DQS_34 Sch=HDMI_TX0_N
+#set_property -dict { PACKAGE_PIN V17   IOSTANDARD LVCMOS33 } [get_ports hdmi_tx_p[0]]; #IO_L21P_T3_DQS_34 Sch=HDMI_TX0_P
+#set_property -dict { PACKAGE_PIN P18   IOSTANDARD LVCMOS33 } [get_ports hdmi_tx_n[1]]; #IO_L23N_T3_34 Sch=HDMI_TX1_N
+#set_property -dict { PACKAGE_PIN N17   IOSTANDARD LVCMOS33 } [get_ports hdmi_tx_p[1]]; #IO_L23P_T3_34 Sch=HDMI_TX1_P
+#set_property -dict { PACKAGE_PIN P19   IOSTANDARD LVCMOS33 } [get_ports hdmi_tx_n[2]]; #IO_L13N_T2_MRCC_34 Sch=HDMI_TX2_N
+#set_property -dict { PACKAGE_PIN N18   IOSTANDARD LVCMOS33 } [get_ports hdmi_tx_p[2]]; #IO_L13P_T2_MRCC_34 Sch=HDMI_TX2_P
+#set_property -dict { PACKAGE_PIN U17   IOSTANDARD LVCMOS33 } [get_ports hdmi_cec]; #IO_L9N_T1_DQS_34 Sch=HDMI_TX_CEC
+#set_property -dict { PACKAGE_PIN P16   IOSTANDARD LVCMOS33 } [get_ports hdmi_hpd]; #IO_L24N_T3_34 Sch=HDMI_TX_HPD
+#set_property -dict { PACKAGE_PIN F17   IOSTANDARD LVCMOS33 } [get_ports hdmi_out_en]; #IO_L6N_T0_VREF_35 Sch=HDMI_OUT_EN
+#set_property -dict { PACKAGE_PIN T17   IOSTANDARD LVCMOS33 } [get_ports hdmi_scl]; #IO_L20P_T3_34 Sch=HDMI_TX_SCL
+#set_property -dict { PACKAGE_PIN R18   IOSTANDARD LVCMOS33 } [get_ports hdmi_sda]; #IO_L20N_T3_34 Sch=HDMI_TX_SDA
+
+##PmodA                                                                                                        
+#set_property -dict { PACKAGE_PIN F16   IOSTANDARD LVCMOS33 } [get_ports { JA1_P }]; #IO_L6P_T0_35 Sch=JA1_P   
+#set_property -dict { PACKAGE_PIN F17   IOSTANDARD LVCMOS33 } [get_ports { JA1_N }]; #IO_L6N_T0_VREF_35 Sch=JA1_N
+#set_property -dict { PACKAGE_PIN G19   IOSTANDARD LVCMOS33 } [get_ports { JA2_P }]; #IO_L18P_T2_AD13P_35 Sch=JA2_P
+#set_property -dict { PACKAGE_PIN G20   IOSTANDARD LVCMOS33 } [get_ports { JA2_N }]; #IO_L18N_T2_AD13N_35 Sch=JA2_N
+#set_property -dict { PACKAGE_PIN E18   IOSTANDARD LVCMOS33 } [get_ports { JA3_P }]; #IO_L5P_T0_AD9P_35 Sch=JA3_P
+#set_property -dict { PACKAGE_PIN E19   IOSTANDARD LVCMOS33 } [get_ports { JA3_N }]; #IO_L5N_T0_AD9N_35 Sch=JA3_N
+#set_property -dict { PACKAGE_PIN E17   IOSTANDARD LVCMOS33 } [get_ports { JA4_P }]; #IO_L3P_T0_DQS_AD1P_35 Sch=JA4_P
+#set_property -dict { PACKAGE_PIN D18   IOSTANDARD LVCMOS33 } [get_ports { JA4_N }]; #IO_L3N_T0_DQS_AD1N_35 Sch=JA4_N
+                           
+##PmodB                                                                                                        
+#set_property -dict { PACKAGE_PIN D19   IOSTANDARD LVCMOS33 } [get_ports { JB1_P }]; #IO_L4P_T0_35 Sch=JB1_P   
+#set_property -dict { PACKAGE_PIN D20   IOSTANDARD LVCMOS33 } [get_ports { JB1_N }]; #IO_L4N_T0_35 Sch=JB1_N   
+#set_property -dict { PACKAGE_PIN F19   IOSTANDARD LVCMOS33 } [get_ports { JB2_P }]; #IO_L15P_T2_DQS_AD12P_35 Sch=JB2_P
+#set_property -dict { PACKAGE_PIN F20   IOSTANDARD LVCMOS33 } [get_ports { JB2_N }]; #IO_L15N_T2_DQS_AD12N_35 Sch=JB2_N
+#set_property -dict { PACKAGE_PIN C20   IOSTANDARD LVCMOS33 } [get_ports { JB3_P }]; #IO_L1P_T0_AD0P_35 Sch=JB3_P
+#set_property -dict { PACKAGE_PIN B20   IOSTANDARD LVCMOS33 } [get_ports { JB3_N }]; #IO_L1N_T0_AD0N_35 Sch=JB3_N
+#set_property -dict { PACKAGE_PIN B19   IOSTANDARD LVCMOS33 } [get_ports { JB4_P }]; #IO_L2P_T0_AD8P_35 Sch=JB4_P
+#set_property -dict { PACKAGE_PIN A20   IOSTANDARD LVCMOS33 } [get_ports { JB4_N }]; #IO_L2N_T0_AD8N_35 Sch=JB4_N
+                                                                                                               
+#Servos                                                                                                        
+#set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 } [get_ports servo1]; #IO_L16P_T2_35 Sch=SERVO1     
+#set_property -dict { PACKAGE_PIN G15   IOSTANDARD LVCMOS33 } [get_ports servo2]; #IO_L19N_T3_VREF_35 Sch=SERVO2
+#set_property -dict { PACKAGE_PIN G14   IOSTANDARD LVCMOS33 } [get_ports servo3]; #IO_0_35 Sch=SERVO3           
+#set_property -dict { PACKAGE_PIN M19   IOSTANDARD LVCMOS33 } [get_ports servo4]; #IO_L7P_T1_AD2P_35 Sch=SERVO4
+
