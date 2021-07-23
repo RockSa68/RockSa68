@@ -1,0 +1,112 @@
+Source111
+`timescale 1ns / 1ps
+
+module serialadder(
+  input A,
+  input B,
+  output F,
+  output Cout,
+  input clk,
+  input rst
+    );
+    // Define State Codes
+    localparam S0 = 2'b00;
+    localparam S1 = 2'b01;
+    localparam S2 = 2'b10;
+    localparam S3 = 2'b11;
+    
+    reg [1:0] pState, nState;
+    
+    // Combinational Logic: Next State Logic
+    always @ (pState, A, B)
+    begin
+        case (pState)
+            S0:begin
+                if (A == 1'b0 && B == 1'b0)
+                    nState = S0;
+                else if (A == 1'b1 && B == 1'b1)
+                    nState = S2;
+                else
+                    nState = S1;
+                end
+            S1:
+                if (A == 1'b0 && B == 1'b0)
+                    nState = S0;
+                else if (A == 1'b1 && B == 1'b1)
+                    nState = S2;
+                else
+                    nState = S1;
+            S2:
+                if (A == 1'b0 && B == 1'b0)
+                    nState = S1;
+                else if (A == 1'b1 && B == 1'b1)
+                    nState = S3;
+                else
+                    nState = S2;
+            S3:
+                if (A == 1'b0 && B == 1'b0)
+                    nState = S1    ;
+                else if (A == 1'b1 && B == 1'b1)
+                    nState = S3;
+                else
+                    nState = S2;
+            default:
+                nState = S0;
+        endcase
+    end
+    
+    // State Registers
+    always @ (posedge(clk), posedge(rst))
+    begin
+        if (rst == 1'b1)
+            pState <= S0;
+        else
+            pState <= nState;
+    end
+    
+    // Output Logic
+    assign F = (pState == S1 || pState == S3) ? 1'b1 : 1'b0;
+    assign Cout = (pState == S2 || pState == S3) ? 1'b1 : 1'b0;
+endmodule
+
+Sim111
+`timescale 1ns / 1ps
+
+module SAsim;
+reg A;
+reg B;
+reg clk;
+reg rst;
+wire F;
+wire Cout;
+serialadder uut(
+.A(A),
+.B(B),
+.clk(clk),
+.rst(rst),
+.F(F),
+.Cout(Cout)
+    );
+    integer j,k;
+    always
+    #2 clk = ~clk;
+    
+    initial 
+    begin
+  A = 1'b0;
+  B = 1'b0;
+  #10 rst = 1'b1;
+  rst = 1'b0;
+  clk = 0;
+  
+for(k = 0; k<32; k = k+1)
+begin
+for(j = 0; j<32; j = j+1)
+begin
+#10 A = k;
+#10 B = j;
+        end  
+    end 
+end   
+endmodule
+
