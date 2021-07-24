@@ -1,0 +1,732 @@
+Wrapper
+`timescale 1ns / 1ps
+module wrap(
+    input clk,
+    input rst,
+    input start,
+    input react,
+    input averagebtn,
+    output memled,
+    output led,
+    output [6:0] c,
+    output [3:0] a,
+    output dp
+    );
+    wire ce0,ce1,ce2,clksec,clkdata,rc,recount;
+    wire [3:0]rand;
+    wire [1:0]sel;
+    wire [15:0]bcd;
+    wire [15:0]Q;
+    wire [3:0]md;
+    wire [3:0]w;
+    
+    wire [3:0]x;
+    wire [7:0]en;
+    wire [15:0]average;
+    wire [15:0]mbcd;
+    wire [15:0]i0,i1,i2,i3,i4,i5,i6,i7;
+    wire [15:0]sum;
+    
+    reactcount reactcount1(
+    .react(react),
+    .rst(rst),
+    .Q(x)
+    );
+    
+    ledcount ledcount1(
+    .react(react),
+    .rst(rst),
+    .led(memled)
+    );
+    
+    address address1(
+    .Q(x),
+    .en(en)
+    );
+    
+    avmux avmux1(
+    .stopwatch(bcd),
+    .average(average),
+    .averagebtn(averagebtn),
+    .display(mbcd)
+    );
+    
+    add add1(
+    .i0(i0),
+    .i1(i1),
+    .i2(i2),
+    .i3(i3),
+    .i4(i4),
+    .i5(i5),
+    .i6(i6),
+    .i7(i7),
+    .s(sum)
+    );
+    
+    divide divide1(
+    .sum(sum),
+    .average(average)
+    );
+    
+    statemachine sm1(
+    .clk(clkdata),
+    .rst(rst),
+    .start(start),
+    .react(react),
+    .rc(rc),
+    .recount(recount),
+    .ce0(ce0),
+    .ce1(ce1),
+    .ce2(ce2)
+    );
+    
+    random rm1(
+    .en(ce0),
+    .clk(clkdata),
+    .rst(rst),
+    .Q(rand)
+    );
+    
+    countrandom c2r1(
+    .en(ce1),
+    .clk(clksec),
+    .rst(rst), 
+    .recount(recount),
+    .rand(rand),
+    .Q(w),
+    .rc(rc)
+    );
+    
+    countbinary cb1(
+    .clk(clkdata),
+    .rst(rst),
+    .recount(recount),
+    .en(ce2),
+    .stopwatch(bcd),
+    .led(led)
+    );
+    
+    bcd bcd1(
+    .bin(mbcd),
+    .bcd(Q)
+    );
+    
+    mux m1(
+    .sel(sel),
+    .I0(Q[3:0]),
+    .I1(Q[7:4]),
+    .I2(Q[11:8]),
+    .I3(Q[15:12]),
+    .Y(md)
+    );
+    
+    cdec cd1(
+    .sw(md),
+    .c(c)
+    );
+    
+    clkdiv clkd1( 
+    .clk(clk),
+    .rst(rst),
+    .clk_div(clkdata)
+    );
+    
+    clkdivsec clkds1( 
+    .clk(clk),
+    .rst(rst),
+    .clk_div(clksec)
+    );
+    
+    count count1(
+    .clk(clkdata),
+    .rst(rst),
+    .Q(sel)
+    );
+    
+    adec ad1(
+    .sw(sel),
+    .a(a),
+    .dp(dp)
+    );
+    
+    pipo16bit p0(
+    .en(en[0]),
+    .rst(rst),
+    .D(bcd),
+    .Q(i0)
+    );
+    pipo16bit p1(
+    .en(en[1]),
+    .rst(rst),
+    .D(bcd),
+    .Q(i1)
+    );
+    pipo16bit p2(
+    .en(en[2]),
+    .rst(rst),
+    .D(bcd),
+    .Q(i2)
+    );
+     pipo16bit p3(
+     .en(en[3]),
+     .rst(rst),
+     .D(bcd),
+     .Q(i3)
+     );
+     pipo16bit p4(
+     .en(en[4]),
+     .rst(rst),
+     .D(bcd),
+     .Q(i4)
+     );
+     pipo16bit p5(
+     .en(en[5]),
+     .rst(rst),
+     .D(bcd),
+     .Q(i5)
+     );
+     pipo16bit p6(
+     .en(en[6]),
+     .rst(rst),
+     .D(bcd),
+     .Q(i6)
+     );
+     pipo16bit p7(
+     .en(en[7]),
+     .rst(rst),
+     .D(bcd),
+     .Q(i7)
+     );
+endmodule
+ 
+`timescale 1ns / 1ps
+module reactcount(
+    input react,
+    input rst,
+    output reg [3:0] Q
+    );
+always @ (posedge(react), posedge(rst))              
+begin
+    if (Q >= 4'b1000)
+        Q <= 4'b0000;
+    else if(rst == 1'b1)
+    begin
+        Q <= 4'b0000;
+    end
+    else if(react == 1'b1)
+    begin
+        Q <= Q + 1'b1;
+    end
+    else
+    begin
+        Q <= Q;
+    end
+end
+endmodule
+ 
+`timescale 1ns / 1ps
+module ledcount(
+    input react,
+    input rst,
+    output reg led
+    );
+    reg [15:0] led_indicator;
+always @ (posedge(react), posedge(rst))begin
+    if(rst == 1'b1) begin
+        led_indicator <= 16'd0;
+        led = 1'b0;
+    end
+    
+    else if(led_indicator >= 4'b0111)
+        led = 1'b1;
+   
+    else if(react == 1'b1)
+        led_indicator <= led_indicator + 1'b1;
+    
+    else
+        led_indicator <= led_indicator;
+end
+endmodule
+ 
+`timescale 1ns / 1ps
+module address(
+input [3:0] Q,
+output reg [7:0] en
+);
+always @ (Q)
+begin
+case(Q)
+    4'b0001: en = 8'b00000001; 
+    4'b0010: en = 8'b00000010; 
+    4'b0011: en = 8'b00000100; 
+    4'b0100: en = 8'b00001000; 
+    4'b0101: en = 8'b00010000; 
+    4'b0110: en = 8'b00100000; 
+    4'b0111: en = 8'b01000000;  
+    4'b1000: en = 8'b10000000; 
+    default:
+    en = 8'b00000000;
+endcase
+end    
+endmodule
+ 
+`timescale 1ns / 1ps
+module avmux(
+    input [15:0]stopwatch,
+    input [15:0]average,
+    input averagebtn,
+    output reg [15:0] display
+    );
+    always @(*)begin
+        if(averagebtn==1'b1) display<=average;
+        else
+            display<=stopwatch;
+        end
+endmodule
+ 
+module add(
+    input [15:0] i0,
+    input [15:0] i1,
+    input [15:0] i2,
+    input [15:0] i3,
+    input [15:0] i4,
+    input [15:0] i5,
+    input [15:0] i6,
+    input [15:0] i7,
+    output reg [15:0] s
+    );
+     reg [15:0] s0;
+     reg [15:0] s1;
+     reg [15:0] s2;
+     reg [15:0] s3;
+     reg [15:0] s4;
+     reg [15:0] s5;
+    always @(*) begin
+        s0=i0+i1;
+        s1=s0+i2;
+        s2=s1+i3;
+        s3=s2+i4;
+        s4=s3+i5;
+        s5=s4+i6;
+        s =s5+i7;
+end
+endmodule
+ 
+module divide(
+    input [15:0] sum,
+    output reg [15:0] average
+    );
+    always @ (*) begin
+        average = sum/4'b1000;
+        end
+endmodule
+ 
+module statemachine(
+    input clk,
+    input rst,
+    input start,
+    input react,
+    input rc,
+    output reg recount,
+    output reg ce0,
+    output reg ce1,
+    output reg ce2
+    );
+    localparam s0 = 2'b00;
+    localparam s1 = 2'b01;
+    localparam s2 = 2'b11;
+    localparam s3 = 2'b10;
+    reg [2:0] ps, ns;
+    always @ (ps,start,react,rc)
+    begin case(ps)
+        s0:begin
+            ce0=1'b1;//randomgen
+            ce1=1'b0;//counttorandom
+            ce2=1'b0;//countbinary
+            recount=1'b0;
+            if(start==1'b1) ns=s1;
+            else ns=s0;
+    end
+        s1:begin
+            ce0=1'b0;
+            ce1=1'b0;
+            ce2=1'b0;  
+            recount=1'b1;
+            ns=s2;   
+    end
+        s2:begin
+            recount=1'b0;
+            ce0=1'b0;
+            ce1=1'b1;
+            ce2=1'b0;  
+            if(rc==1'b1) ns = s3;
+            else ns=s2;
+     end
+        s3:begin
+            ce0=1'b1;
+            ce1=1'b0;
+            ce2=1'b1;  
+            recount=1'b0;
+            if(react==1'b1) ns= s0;
+            else ns = s3;
+     end
+        default: begin
+            ce0=1'b0;
+            ce1=1'b0;
+            ce2=1'b0;
+            recount=1'b0;
+            ns=s0;
+     end
+     endcase
+     end    
+     always @(posedge(clk),posedge(rst))
+     begin
+        if(rst==1'b1) ps<=s0;
+        else ps<=ns;
+        end
+endmodule
+
+module random(
+    input en,
+    input clk,
+    input rst,
+    output reg [3:0] Q
+    );
+    always @ (posedge(clk), posedge(rst))
+    begin
+        if (rst== 1'b1)
+            Q<=4'b0;
+        else if (en==1'b1)
+            Q<=Q+1'b1;
+        else 
+            Q<=Q;
+end
+endmodule
+ 
+module countrandom(
+    input en,
+    input clk,
+    input rst, 
+    input recount,
+    input [3:0] rand,
+    output reg [3:0] Q,
+    output reg rc
+    );
+    always @ (posedge(clk), posedge(rst))
+    begin
+        if (rst== 1'b1 || recount ==1'b1)
+        begin
+            Q<=4'b0;
+            rc<=1'b0;
+        end
+        else if(Q >= rand)
+            rc <= 1'b1;
+        else if (en==1'b1 && Q<rand)
+        begin
+            Q<=Q+1'b1;   
+            rc<=1'b0;
+        end
+        else 
+        begin
+            Q<=Q;
+            rc<=1'b0;
+        end
+        end
+endmodule
+ 
+module countbinary(
+    input clk,
+    input rst,
+    input recount,
+    input en,
+    output reg [15:0] stopwatch,
+    output reg led
+    );
+     always @ (posedge(clk), posedge(rst))
+       begin
+           if (rst== 1'b1 || recount == 1'b1)
+               stopwatch<=16'b0;
+           else if (en==1'b1)
+             begin
+               stopwatch<=stopwatch+1'b1;
+               led <=1'b1;
+             end
+           else
+            begin 
+               stopwatch<=stopwatch;
+               led<=1'b0;
+            end
+           end
+endmodule
+ 
+module bcd(
+    input [15:0] bin,
+    output reg [15:0] bcd
+    );
+    reg [4:0] k;  
+    always @(bin) begin
+        bcd = 0;
+        for (k = 0; k < 16; k = k+1) 
+        begin
+            bcd = {bcd[14:0],bin[15-k]}; 
+            
+            if(k < 15 && bcd[3:0] > 4) 
+               bcd[3:0] = bcd[3:0] + 3;
+            
+            if(k < 15 && bcd[7:4] > 4)
+               bcd[7:4] = bcd[7:4] + 3;
+            
+            if(k < 15 && bcd[11:8] > 4)
+               bcd[11:8] = bcd[11:8] + 3;  
+            
+            if(k < 15 && bcd[15:12] > 4)
+              bcd[15:12] = bcd[15:12] + 3; 
+        end
+        end     
+endmodule
+ 
+module mux(
+    input [1:0] sel,
+    input [3:0] I0,
+    input [3:0] I1,
+    input [3:0] I2,
+    input [3:0] I3,
+    output reg [3:0] Y
+    );
+    always @(sel) begin
+    case (sel)
+        2'd0 : Y = I0;
+        2'd1 : Y = I1;
+        2'd2 : Y = I2;
+        2'd3 : Y = I3;
+        default Y = 2'd0;
+        endcase
+        end
+        endmodule
+ 
+module cdec(
+    input [3:0]sw,
+    output reg [6:0]c
+    );
+    always @ (sw)
+        begin 
+        if(sw==4'd0) c<=7'b1000000;//0
+   else if(sw==4'd1) c<=7'b1111001;
+   else if(sw==4'd2) c<=7'b0100100;
+   else if(sw==4'd3) c<=7'b0110000;
+   else if(sw==4'd4) c<=7'b0011001;
+   else if(sw==4'd5) c<=7'b0010010;
+   else if(sw==4'd6) c<=7'b0000010;
+   else if(sw==4'd7) c<=7'b1111000;
+   else if(sw==4'd8) c<=7'b0000000;
+   else if(sw==4'd9) c<=7'b0011000;//9
+       else c<=7'b1111111;
+        end
+endmodule
+ 
+module clkdiv ( 
+    input clk,
+    input rst,
+    output reg clk_div
+    );
+localparam constantNumber = 50000; //milliseconds
+reg [31:0] count;
+ 
+always @ (posedge(clk), posedge(rst))
+begin
+    if (rst == 1'b1)
+        count <= 32'b0;
+    else if (count == constantNumber - 1)
+        count <= 32'b0;
+    else
+        count <= count + 1;
+end
+ 
+always @ (posedge(clk), posedge(rst))
+begin
+    if (rst == 1'b1)
+        clk_div <= 1'b0;
+    else if (count == constantNumber - 1)
+        clk_div <= ~clk_div;
+    else
+        clk_div <= clk_div;
+end
+ 
+endmodule
+ 
+`timescale 1ns / 1ps
+module clkdivsec ( 
+    input clk,
+    input rst,
+    output reg clk_div
+    );
+localparam constantNumber = 50000000; //seconds
+reg [31:0] count;
+ 
+always @ (posedge(clk), posedge(rst))
+begin
+    if (rst == 1'b1)
+        count <= 32'b0;
+    else if (count == constantNumber - 1)
+        count <= 32'b0;
+    else
+        count <= count + 1;
+end
+ 
+always @ (posedge(clk), posedge(rst))
+begin
+    if (rst == 1'b1)
+        clk_div <= 1'b0;
+    else if (count == constantNumber - 1)
+        clk_div <= ~clk_div;
+    else
+        clk_div <= clk_div;
+end
+ endmodule
+ 
+module count(
+    input clk,
+    input rst,
+    output reg [1:0] Q
+    );
+always @ (posedge(clk), posedge(rst))            
+begin
+    if (rst == 1'b1)
+        Q <= 2'b0;
+    else
+        Q <= Q + 1'b1;
+end
+endmodule
+ 
+module adec(
+    input [1:0]sw,
+    output reg [3:0]a,
+    output reg dp
+    );
+    always @ (sw)
+        begin 
+        if(sw==2'd0) a<=4'b1110;
+   else if(sw==2'd1) a<=4'b1101;
+   else if(sw==2'd2) a<=4'b1011;
+   else if(sw==2'd3) a<=4'b0111;
+        else a<=4'b1111;
+        end
+        
+   always@(sw) begin
+   if(sw == 2'd3) dp=1'b0;
+   else dp = 1'b1;
+   
+end
+endmodule
+ 
+
+module pipo16bit(
+    input en,
+    input rst,
+    input [15:0] D,
+    output [15:0] Q
+);
+dff dff_inst0 (
+    .en(en),
+    .rst(rst),
+    .D(D[0]),
+    .Q(Q[0])
+);
+genvar i;
+generate
+for (i = 1; i < 16; i=i+1)
+begin: 
+dff_gen_label
+    dff dff_inst (
+        .en(en),
+        .rst(rst),
+        .D(D[i]),
+        .Q(Q[i])
+    );
+end
+endgenerate
+endmodule
+module dff(
+    input en,
+    input D,
+    input rst,
+    output reg Q
+);
+always @ (*)  //might need two always blocks
+begin
+    if (rst == 1'b1) Q <= 1'b0;
+    else if (en == 1'b1) Q <= D;
+    else Q <= Q;
+end
+endmodule
+ 
+module pipo16bit(
+    input en,
+    input rst,
+    input [15:0] D,
+    output [15:0] Q
+);
+dff dff_inst0 (
+    .en(en),
+    .rst(rst),
+    .D(D[0]),
+    .Q(Q[0])
+);
+genvar i;
+generate
+for (i = 1; i < 16; i=i+1)
+begin: 
+dff_gen_label
+    dff dff_inst (
+        .en(en),
+        .rst(rst),
+        .D(D[i]),
+        .Q(Q[i])
+    );
+end
+endgenerate
+endmodule
+module dff(
+    input en,
+    input D,
+    input rst,
+    output reg Q
+);
+always @ (*)  //might need two always blocks
+begin
+    if (rst == 1'b1) Q <= 1'b0;
+    else if (en == 1'b1) Q <= D;
+    else Q <= Q;
+end
+endmodule
+ 
+Constraints
+ 
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets react_IBUF] 
+ 
+set_property -dict { PACKAGE_PIN H16   IOSTANDARD LVCMOS33 } [get_ports { clk }]; 
+create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 4} [get_ports { clk }];
+ 
+set_property -dict { PACKAGE_PIN W14   IOSTANDARD LVCMOS33 } [get_ports { start }]; //btn0
+set_property -dict { PACKAGE_PIN W13   IOSTANDARD LVCMOS33 } [get_ports { react }]; //btn1
+set_property -dict { PACKAGE_PIN M14   IOSTANDARD LVCMOS33 } [get_ports { rst }]; //btn3
+set_property -dict { PACKAGE_PIN P15   IOSTANDARD LVCMOS33 } [get_ports { averagebtn }];//btn2
+ 
+set_property -dict { PACKAGE_PIN T20   IOSTANDARD LVCMOS33 } [get_ports { led }];
+set_property -dict { PACKAGE_PIN Y17   IOSTANDARD LVCMOS33 } [get_ports { memled }]; #IO_L7N_T1_34 Schematic=LD7_B
+ 
+##anodes
+set_property -dict { PACKAGE_PIN K19   IOSTANDARD LVCMOS33 } [get_ports {a[0] }]; #IO_L10P_T1_AD11P_35 Schematic=SSEG_AN0
+set_property -dict { PACKAGE_PIN H17   IOSTANDARD LVCMOS33 } [get_ports {a[1] }]; #IO_L13N_T2_MRCC_35 Schematic=SSEG_AN1
+set_property -dict { PACKAGE_PIN M18   IOSTANDARD LVCMOS33 } [get_ports {a[2] }]; #IO_L8N_T1_AD10N_35 Schematic=SSEG_AN2
+set_property -dict { PACKAGE_PIN L16   IOSTANDARD LVCMOS33 } [get_ports {a[3] }]; #IO_L11P_T1_SRCC_35 Schematic=SSEG_AN3
+ 
+##cathodes
+set_property -dict { PACKAGE_PIN K14   IOSTANDARD LVCMOS33 } [get_ports {c[0] }]; #IO_L20P_T3_AD6P_35 Schematic=SSEG_CA
+set_property -dict { PACKAGE_PIN H15   IOSTANDARD LVCMOS33 } [get_ports {c[1] }]; #IO_L19P_T3_35 Schematic=SSEG_CB
+set_property -dict { PACKAGE_PIN J18   IOSTANDARD LVCMOS33 } [get_ports {c[2] }]; #IO_L14P_T2_AD4P_SRCC_35 Schematic=SSEG_CC
+set_property -dict { PACKAGE_PIN J15   IOSTANDARD LVCMOS33 } [get_ports {c[3] }]; #IO_25_35 Schematic=SSEG_CD
+set_property -dict { PACKAGE_PIN M17   IOSTANDARD LVCMOS33 } [get_ports {c[4] }]; #IO_L8P_T1_AD10P_35 Schematic=SSEG_CE
+set_property -dict { PACKAGE_PIN J16   IOSTANDARD LVCMOS33 } [get_ports {c[5] }]; #IO_L24N_T3_AD15N_35 Schematic=SSEG_CF
+set_property -dict { PACKAGE_PIN H18   IOSTANDARD LVCMOS33 } [get_ports {c[6] }]; #IO_L8P_T1_AD10P_35 Schematic=SSEG_CG
+set_property -dict { PACKAGE_PIN K18   IOSTANDARD LVCMOS33 } [get_ports { dp }]; #IO_L12N_T1_MRCC_35 Schematic=SSEG_DP
